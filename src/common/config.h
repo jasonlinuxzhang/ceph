@@ -391,6 +391,8 @@ public:
   mutable Mutex lock;
 
   friend class test_md_config_t;
+
+  ceph::logging::ZyLog funlog;
 };
 
 template<typename T>

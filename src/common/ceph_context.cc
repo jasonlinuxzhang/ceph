@@ -452,6 +452,48 @@ void CephContext::do_command(std::string_view command, const cmdmap_t& cmdmap,
       }
 
     }
+    else if (command == "zylog set") {
+      std::string zy_subsys;
+      std::string zy_fun;
+
+      if (!(cmd_getval(this, cmdmap, "subsys", zy_subsys)) ||
+          !(cmd_getval(this, cmdmap, "fun", zy_fun))) {
+        f->dump_string("error", "syntax error: 'config set <subsys> <fun>'");
+      } else {
+          int subsys_id = _conf->funlog.zy_subsys_string_to_unsigned(zy_subsys);
+          if(-1 == subsys_id)
+            f->dump_stream("error") << zy_subsys << " is not a subsys";
+          else
+          {
+            _conf->funlog.zy_set_fun_log((unsigned)subsys_id, zy_fun);
+            f->dump_stream("success") << " set " << zy_subsys << "(" << subsys_id << ") " << zy_fun;
+          }
+      }
+    }
+    else if (command == "zylog unset") {
+      std::string zy_subsys;
+      std::string zy_fun;
+
+      if (!(cmd_getval(this, cmdmap, "subsys", zy_subsys)) ||
+          !(cmd_getval(this, cmdmap, "fun", zy_fun))) {
+        f->dump_string("error", "syntax error: 'config set <subsys> <fun>'");
+      } else {
+          int subsys_id = _conf->funlog.zy_subsys_string_to_unsigned(zy_subsys);
+          if(-1 == subsys_id)
+            f->dump_stream("error ") << zy_subsys << "is not a subsys";
+          else
+          {
+            _conf->funlog.zy_unset_fun_log((unsigned)subsys_id, zy_fun);
+            f->dump_stream("success ") << "unset" << zy_subsys << "(" << subsys_id << ") " << zy_fun;
+          }
+      }
+    }
+    else if (command == "zylog showsubsys") {
+      _conf->funlog.get_all_subsys(f); 
+    }
+    else if (command == "zylog showsets") {
+      _conf->funlog.get_all_setted_funs(f);
+    }
     else if (command == "config set") {
       std::string var;
       std::vector<std::string> val;
@@ -605,6 +647,11 @@ CephContext::CephContext(uint32_t module_type_,
   _admin_socket->register_command("log flush", "log flush", _admin_hook, "flush log entries to log file");
   _admin_socket->register_command("log dump", "log dump", _admin_hook, "dump recent log entries to log file");
   _admin_socket->register_command("log reopen", "log reopen", _admin_hook, "reopen log file");
+
+  _admin_socket->register_command("zylog set", "zylog set name=subsys,type=CephString name=fun,type=CephString", _admin_hook, "");
+  _admin_socket->register_command("zylog unset", "zylog unset name=subsys,type=CephString name=fun,type=CephString", _admin_hook, "");
+  _admin_socket->register_command("zylog showsubsys", "zylog showsubsys", _admin_hook, "");
+  _admin_socket->register_command("zylog showsets", "zylog showsets", _admin_hook, "");
 
   _crypto_none = CryptoHandler::create(CEPH_CRYPTO_NONE);
   _crypto_aes = CryptoHandler::create(CEPH_CRYPTO_AES);

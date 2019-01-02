@@ -70,6 +70,9 @@ struct is_dynamic<dynamic_marker_t<T>> : public std::true_type {};
 
 #define dout_impl(cct, sub, v)						\
   do {									\
+    unsigned funsub = sub;  \
+    const string funname = __func__;  \
+    bool funlog_out = false;  \
   const bool should_gather = [&](const auto cctX) {			\
     if constexpr (ceph::dout::is_dynamic<decltype(sub)>::value ||	\
 		  ceph::dout::is_dynamic<decltype(v)>::value) {		\
@@ -82,10 +85,20 @@ struct is_dynamic<dynamic_marker_t<T>> : public std::true_type {};
     }									\
   }(cct);								\
 									\
-  if (should_gather) {							\
+  if (!should_gather){    \
+    funlog_out = !(cct->_conf->funlog.zy_should_gather(funsub, funname)); \
+  } \
+  if (should_gather || funlog_out) {							\
     static size_t _log_exp_length = 80; 				\
-    ceph::logging::Entry *_dout_e = 					\
-      cct->_log->create_entry(v, sub, &_log_exp_length);		\
+    ceph::logging::Entry *_dout_e = NULL; 					\
+    if(!funlog_out) {                             \
+      _dout_e = 					\
+        cct->_log->create_entry(v, sub, &_log_exp_length);		\
+    }                   \
+    else {              \
+     _dout_e =           \
+        cct->_log->create_entry(-1, sub, &_log_exp_length);    \
+    }                   \
     static_assert(std::is_convertible<decltype(&*cct), 			\
 				      CephContext* >::value,		\
 		  "provided cct must be compatible with CephContext*"); \

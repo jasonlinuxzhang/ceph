@@ -10,6 +10,7 @@
 
 #include "common/likely.h"
 #include "common/subsys_types.h"
+#include "common/Formatter.h"
 
 #include "include/assert.h"
 
@@ -105,6 +106,69 @@ public:
     m_gather_levels[subsys] = \
       std::max(m_subsys[subsys].log_level, gather);
   }
+
+};
+
+class ZyLog
+{
+
+private:
+  std::map<unsigned, std::set<std::string>> zy_log_funs;
+
+public:
+  void zy_set_fun_log(unsigned subsys, std::string fun_name)
+  {
+    zy_log_funs[subsys].insert(fun_name);
+  }
+
+  void zy_unset_fun_log(unsigned subsys, std::string fun_name)
+  {
+    zy_log_funs[subsys].erase(fun_name); 
+    if(zy_log_funs[subsys].empty())
+    {
+      zy_log_funs.erase(subsys);
+    }
+  }
+
+  bool zy_should_gather(unsigned subsys, std::string fun_name)
+  {
+    return (zy_log_funs[subsys].find(fun_name) == zy_log_funs[subsys].end());
+  }
+   
+  int zy_subsys_string_to_unsigned(std::string subsys_str)
+  {
+    constexpr auto t = ceph_subsys_get_as_array();
+    for(unsigned i = 0; i < t.size(); i++)
+    {
+      if(std::string(t[i].name) == subsys_str)
+        return i;
+    }
+    return -1;
+  }
+
+  void get_all_subsys(Formatter *f)
+  {
+    auto t = ceph_subsys_get_as_array();
+    for(unsigned i = 0; i < t.size(); i++)
+    {
+      f->dump_stream(t[i].name);
+    }
+  }
+
+  void get_all_setted_funs(Formatter *f)
+  {
+    for(auto subsys_it = zy_log_funs.begin(); subsys_it != zy_log_funs.end(); subsys_it++)
+    {
+      if(subsys_it->first >= ceph_subsys_get_num())
+        continue;
+
+      const auto subsys_name = ceph_subsys_get_as_array()[subsys_it->first].name; 
+      for(auto fun_it = subsys_it->second.begin(); fun_it != subsys_it->second.end(); fun_it++)
+        f->dump_string(subsys_name, *fun_it);
+    } 
+  }
+  
+
 };
 
 }
